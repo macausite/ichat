@@ -36,13 +36,13 @@ const io = new Server(server, {
   }
 });
 
-// Define basic API routes
-app.get('/', (req, res) => {
-  console.log('Health check endpoint accessed');
+// Health check endpoint - reports service status and version
+app.get('/health', (req, res) => {
+  console.log('Health check accessed');
   res.status(200).json({ 
     status: 'online', 
     message: 'iChat API is running', 
-    version: '1.0.1',
+    version: '1.0.2',
     timestamp: new Date().toISOString()
   });
 });
