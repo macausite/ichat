@@ -43,12 +43,14 @@ export default function ChatPage() {
   // Handle incoming messages from socket
   useEffect(() => {
     if (socketRef.current) {
-      socketRef.current.on('receive_message', (message) => {
+      const socket = socketRef.current; // Capture the value of socketRef.current
+      
+      socket.on('receive_message', (message) => {
         addMessage(message);
       });
       
       return () => {
-        socketRef.current?.off('receive_message');
+        socket.off('receive_message'); // Use the captured reference in cleanup
       };
     }
   }, [socketRef, addMessage]);
@@ -68,6 +70,7 @@ export default function ChatPage() {
           id,
           fullName: 'User ' + id.substring(0, 4),
           isOnline: Math.random() > 0.5,
+          email: `user_${id.substring(0, 4)}@example.com`, // Add email field to satisfy User interface
         })),
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()

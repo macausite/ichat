@@ -1,8 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+"use client";
+
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Socket } from 'socket.io-client';
 import ChatMessage from './ChatMessage';
 import MessageInput from './MessageInput';
 import useChatStore from '../../store/useChatStore';
+import { Message } from '../../types';
 import useAuthStore from '../../store/useAuthStore';
 import { FaArrowLeft, FaEllipsisV, FaPhone, FaVideo } from 'react-icons/fa';
 
@@ -18,7 +21,9 @@ export default function ChatConversation({ socket, onBackClick, isMobile = false
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const activeRoom = rooms.find(room => room.id === activeRoomId);
-  const activeMessages = activeRoomId ? messages[activeRoomId] || [] : [];
+  const activeMessages = useMemo(() => {
+    return activeRoomId ? messages[activeRoomId] || [] : [];
+  }, [messages, activeRoomId]);
   
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -45,7 +50,7 @@ export default function ChatConversation({ socket, onBackClick, isMobile = false
     );
   }
   
-  const handleMessageSent = (message: any) => {
+  const handleMessageSent = (message: Message) => {
     addMessage(message);
   };
   
@@ -96,7 +101,7 @@ export default function ChatConversation({ socket, onBackClick, isMobile = false
             <p className="text-sm">Be the first to send a message!</p>
           </div>
         ) : (
-          activeMessages.map((message) => (
+          activeMessages.map((message: Message) => (
             <ChatMessage
               key={message.id}
               content={message.content}
@@ -104,7 +109,7 @@ export default function ChatConversation({ socket, onBackClick, isMobile = false
               isOwn={message.senderId === user?.id}
               senderName={
                 message.senderId !== user?.id
-                  ? activeRoom.participants.find(p => p.id === message.senderId)?.fullName || 'User'
+                  ? activeRoom?.participants?.find(p => p.id === message.senderId)?.fullName || 'User'
                   : undefined
               }
               isRead={message.read}

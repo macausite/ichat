@@ -1,12 +1,15 @@
+"use client";
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Socket } from 'socket.io-client';
 import { FaPaperPlane, FaSmile, FaPaperclip } from 'react-icons/fa';
 import useAuthStore from '../../store/useAuthStore';
+import { Message } from '../../types';
 
 interface MessageInputProps {
   roomId: string;
   socket: React.MutableRefObject<Socket | null>;
-  onMessageSent: (message: any) => void;
+  onMessageSent: (message: Message) => void;
 }
 
 export default function MessageInput({ roomId, socket, onMessageSent }: MessageInputProps) {
