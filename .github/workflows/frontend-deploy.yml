@@ -1,0 +1,44 @@
+name: Deploy Frontend to Netlify
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'frontend/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Create .env file
+        run: |
+          echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env.production
+          echo "NEXT_PUBLIC_SUPABASE_KEY=${{ secrets.SUPABASE_KEY }}" >> .env.production
+          echo "NEXT_PUBLIC_API_URL=https://api.ichat.co" >> .env.production
+          echo "NEXT_PUBLIC_SITE_URL=https://ichat.co" >> .env.production
+          echo "NEXT_PUBLIC_SITE_NAME=iChat" >> .env.production
+        
+      - name: Build
+        run: npm run build
+        
+      - name: Deploy to Netlify
+        uses: netlify/actions/cli@master
+        with:
+          args: deploy --prod --dir=./frontend/.next
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
