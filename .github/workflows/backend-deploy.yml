@@ -40,12 +40,8 @@ jobs:
           echo "FRONTEND_URL=https://ichat.co" >> .env
       
 
-      - name: Enable required APIs
-        run: |
-          gcloud services enable artifactregistry.googleapis.com
-          gcloud services enable run.googleapis.com
-          # Wait for API activation to propagate
-          sleep 20
+      # Skip API enablement as the service account doesn't have permission
+      # Container Registry should be available by default
 
       - name: Configure Docker with gcloud
         run: gcloud auth configure-docker
