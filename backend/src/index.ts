@@ -38,7 +38,13 @@ const io = new Server(server, {
 
 // Define basic API routes
 app.get('/', (req, res) => {
-  res.status(200).json({ status: 'online', message: 'iChat API is running' });
+  console.log('Health check endpoint accessed');
+  res.status(200).json({ 
+    status: 'online', 
+    message: 'iChat API is running', 
+    version: '1.0.1',
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Socket.io connection handler
