@@ -1,0 +1,11 @@
+runtime: nodejs18
+
+env_variables:
+  NODE_ENV: "production"
+  PORT: "8080"
+  FRONTEND_URL: "https://ichat.co"
+
+handlers:
+  - url: /.*
+    script: auto
+    secure: always
