@@ -13,6 +13,7 @@ export default function ChatPage() {
   const [isNewChatDialogOpen, setIsNewChatDialogOpen] = useState(false);
   const [isMobileView, setIsMobileView] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { user } = useAuthStore();
   const { addRoom, addMessage, activeRoomId } = useChatStore();
@@ -22,6 +23,9 @@ export default function ChatPage() {
   useEffect(() => {
     if (!user) {
       router.push('/login');
+    } else {
+      // When user data is available, we can safely show content
+      setIsLoading(false);
     }
   }, [user, router]);
   
@@ -87,30 +91,47 @@ export default function ChatPage() {
     }
   };
   
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex flex-col h-screen w-full items-center justify-center bg-gradient-to-b from-indigo-50 to-white">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="w-16 h-16 mb-4 rounded-full bg-indigo-200"></div>
+          <div className="h-4 w-24 bg-indigo-200 rounded mb-3"></div>
+          <div className="h-2 w-16 bg-indigo-100 rounded"></div>
+        </div>
+      </div>
+    );
+  }
+  
   // If user is not authenticated, don't render anything
   if (!user) {
     return null;
   }
   
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gradient-to-br from-indigo-50 to-white overflow-hidden">
       {/* Sidebar */}
-      {(showSidebar || !isMobileView) && (
-        <div className={`${isMobileView ? 'w-full' : 'w-80'} h-full bg-white`}>
-          <ChatSidebar onCreateChat={() => setIsNewChatDialogOpen(true)} />
-        </div>
-      )}
+      <div 
+        className={`${showSidebar || !isMobileView ? 'translate-x-0' : '-translate-x-full'} 
+          ${isMobileView ? 'absolute z-10 w-full' : 'relative w-80'} 
+          h-full bg-white shadow-md transition-transform duration-300 ease-in-out`}
+      >
+        <ChatSidebar onCreateChat={() => setIsNewChatDialogOpen(true)} />
+      </div>
       
       {/* Conversation */}
-      {(!showSidebar || !isMobileView) && (
-        <div className={`${isMobileView ? 'w-full' : 'flex-grow'} h-full`}>
-          <ChatConversation 
-            socket={socketRef} 
-            onBackClick={() => setShowSidebar(true)}
-            isMobile={isMobileView}
-          />
-        </div>
-      )}
+      <div 
+        className={`${!showSidebar || !isMobileView ? 'translate-x-0' : 'translate-x-full'} 
+          ${isMobileView ? 'absolute z-10 w-full' : 'relative flex-grow'} 
+          h-full bg-white transition-transform duration-300 ease-in-out`}
+      >
+        <ChatConversation 
+          socket={socketRef} 
+          onBackClick={() => setShowSidebar(true)}
+          isMobile={isMobileView}
+        />
+      </div>
       
       {/* New Chat Dialog */}
       <NewChatDialog 
