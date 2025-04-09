@@ -8,6 +8,7 @@ import NewChatDialog from '../../components/chat/NewChatDialog';
 import useAuthStore from '../../store/useAuthStore';
 import useChatStore from '../../store/useChatStore';
 import useSocket from '../../hooks/useSocket';
+import { fetchMockContacts } from '../../lib/mockData';
 
 export default function ChatPage() {
   const [isNewChatDialogOpen, setIsNewChatDialogOpen] = useState(false);
@@ -16,7 +17,7 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { user } = useAuthStore();
-  const { addRoom, addMessage, activeRoomId } = useChatStore();
+  const { addRoom, addMessage, activeRoomId, addContact } = useChatStore();
   const socketRef = useSocket();
   
   // Check if user is authenticated
@@ -24,10 +25,26 @@ export default function ChatPage() {
     if (!user) {
       router.push('/login');
     } else {
-      // When user data is available, we can safely show content
-      setIsLoading(false);
+      // Load mock contacts
+      const loadContacts = async () => {
+        try {
+          const mockContacts = await fetchMockContacts();
+          // Add each contact to the store
+          mockContacts.forEach(contact => {
+            addContact(contact);
+          });
+          console.log('Loaded mock contacts:', mockContacts.length);
+        } catch (error) {
+          console.error('Failed to load contacts:', error);
+        } finally {
+          // When user data and contacts are available, we can safely show content
+          setIsLoading(false);
+        }
+      };
+      
+      loadContacts();
     }
-  }, [user, router]);
+  }, [user, router, addContact]);
   
   // Handle responsive layout
   useEffect(() => {

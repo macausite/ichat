@@ -15,17 +15,29 @@ A full-featured chat application similar to WhatsApp and WeChat, built with mode
 ## Tech Stack
 
 ### Frontend
-- Next.js (React framework)
-- Tailwind CSS for styling
-- Supabase for authentication
-- Socket.io client for real-time communication
-- Zustand for state management
+- Next.js 15.2.4 (React framework)
+- React 19.0.0
+- TypeScript 5+
+- Tailwind CSS 4 for styling
+- Supabase JS for authentication and data storage
+- Socket.io Client 4.8.1 for real-time communication
+- Zustand 5.0.3 for state management
+- React Hook Form 7.55.0 for form handling
+- React Icons 5.5.0 for UI icons
+- date-fns 4.1.0 for date formatting and manipulation
+- Turbopack for development
+- Google Tag Manager for analytics
 - Deployed on Netlify
 
 ### Backend
-- Node.js with Express
-- Socket.io for real-time communication
-- Supabase for data storage and authentication
+- Node.js
+- TypeScript 5+
+- Express 5.1.0 as the web framework
+- Socket.io 4.8.1 for real-time communication
+- Supabase JS for data storage and authentication
+- Cors for cross-origin resource sharing
+- Dotenv for environment variable management
+- Nodemon and ts-node for development
 - Deployed on Google Cloud
 
 ## Project Structure
