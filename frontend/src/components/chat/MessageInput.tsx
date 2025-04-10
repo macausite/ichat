@@ -1,18 +1,18 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Socket } from 'socket.io-client';
 import { FaPaperPlane, FaSmile, FaPaperclip, FaMicrophone, FaImage, FaVideo } from 'react-icons/fa';
 import useAuthStore from '../../store/useAuthStore';
 import { Message } from '../../types';
+import { socketManager } from '../../lib/socket';
+import { sendMessage } from '../../lib/services/chatService';
 
 interface MessageInputProps {
   roomId: string;
-  socket: React.MutableRefObject<Socket | null>;
   onMessageSent: (message: Message) => void;
 }
 
-export default function MessageInput({ roomId, socket, onMessageSent }: MessageInputProps) {
+export default function MessageInput({ roomId, onMessageSent }: MessageInputProps) {
   const [message, setMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -29,14 +29,9 @@ export default function MessageInput({ roomId, socket, onMessageSent }: MessageI
   
   // Handle typing indicator
   const handleTyping = () => {
-    if (!isTyping && socket.current && user) {
+    if (!isTyping && user) {
       setIsTyping(true);
-      socket.current.emit('typing', {
-        roomId,
-        userId: user.id,
-        username: user.full_name || 'User',
-        isTyping: true
-      });
+      socketManager.sendTypingStatus(roomId, true);
     }
     
     // Reset the timeout
@@ -46,50 +41,54 @@ export default function MessageInput({ roomId, socket, onMessageSent }: MessageI
     
     // Set a new timeout to stop typing indicator after 2 seconds
     typingTimeoutRef.current = setTimeout(() => {
-      if (socket.current && user) {
+      if (user) {
         setIsTyping(false);
-        socket.current.emit('typing', {
-          roomId,
-          userId: user.id,
-          username: user.full_name || 'User',
-          isTyping: false
-        });
+        socketManager.sendTypingStatus(roomId, false);
       }
     }, 2000);
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!message.trim() || !socket.current || !user) return;
+    if (!message.trim() || !user) return;
     
-    const newMessage = {
-      id: Math.random().toString(36).substr(2, 9), // Temporary ID until server assigns one
-      roomId,
-      senderId: user.id,
-      content: message.trim(),
-      timestamp: new Date().toISOString(),
-      read: false
-    };
+    const messageContent = message.trim();
     
-    // Emit message to server
-    socket.current.emit('send_message', newMessage);
-    
-    // Update local state
-    onMessageSent(newMessage);
-    
-    // Clear input
-    setMessage('');
+    try {
+      // Create a temporary message for optimistic UI update
+      const tempMessage = {
+        id: Math.random().toString(36).substr(2, 9), // Temporary ID until server assigns one
+        roomId,
+        senderId: user.id,
+        content: messageContent,
+        timestamp: new Date().toISOString(),
+        read: false
+      };
+      
+      // Update local state immediately for responsive UI
+      onMessageSent(tempMessage);
+      
+      // Clear input
+      setMessage('');
+      
+      // Send message through our service (which handles both API and socket)
+      const sentMessage = await sendMessage(roomId, messageContent);
+      
+      // If the message was sent successfully, update it with the real ID
+      if (sentMessage) {
+        // The socket will automatically broadcast to all clients including this one
+        // so we don't need to manually update the message again
+      }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Could add error handling UI here (e.g., show error message)
+    }
     
     // Reset typing indicator
-    if (isTyping && socket.current) {
+    if (isTyping) {
       setIsTyping(false);
-      socket.current.emit('typing', {
-        roomId,
-        userId: user.id,
-        username: user.full_name || 'User',
-        isTyping: false
-      });
+      socketManager.sendTypingStatus(roomId, false);
       
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);

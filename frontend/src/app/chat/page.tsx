@@ -7,8 +7,10 @@ import ChatConversation from '../../components/chat/ChatConversation';
 import NewChatDialog from '../../components/chat/NewChatDialog';
 import useAuthStore from '../../store/useAuthStore';
 import useChatStore from '../../store/useChatStore';
-import useSocket from '../../hooks/useSocket';
-import { fetchMockContacts } from '../../lib/mockData';
+// Import the socket manager and services
+import { socketManager } from '../../lib/socket';
+import { fetchContacts } from '../../lib/services/contactService';
+import { fetchRooms, createRoom, fetchMessages, markMessagesAsRead } from '../../lib/services/chatService';
 
 export default function ChatPage() {
   const [isNewChatDialogOpen, setIsNewChatDialogOpen] = useState(false);
@@ -17,34 +19,59 @@ export default function ChatPage() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { user } = useAuthStore();
-  const { addRoom, addMessage, activeRoomId, addContact } = useChatStore();
-  const socketRef = useSocket();
+  const { addRoom, addMessage, activeRoomId, setActiveRoom, addContact, updateContact } = useChatStore();
+  // We're now using the socket manager directly instead of the hook
   
-  // Check if user is authenticated
+  // Check if user is authenticated and initialize data
   useEffect(() => {
     if (!user) {
       router.push('/login');
     } else {
-      // Load mock contacts
-      const loadContacts = async () => {
+      setIsLoading(true);
+      
+      // Initialize socket connection
+      socketManager.initialize(user.id);
+      
+      // Load contacts and chat rooms
+      const initializeChat = async () => {
         try {
-          const mockContacts = await fetchMockContacts();
-          // Add each contact to the store
-          mockContacts.forEach(contact => {
+          // Load real contacts from Supabase
+          const userContacts = await fetchContacts();
+          userContacts.forEach(contact => {
             addContact(contact);
           });
-          console.log('Loaded mock contacts:', mockContacts.length);
+          console.log('Loaded contacts:', userContacts.length);
+          
+          // Load rooms/conversations
+          const userRooms = await fetchRooms();
+          userRooms.forEach(room => {
+            addRoom(room);
+          });
+          console.log('Loaded rooms:', userRooms.length);
+          
+          // Preload messages for all rooms
+          await Promise.all(userRooms.map(async (room) => {
+            const roomMessages = await fetchMessages(room.id);
+            roomMessages.forEach(message => {
+              addMessage(message);
+            });
+          }));
+          
         } catch (error) {
-          console.error('Failed to load contacts:', error);
+          console.error('Failed to initialize chat data:', error);
         } finally {
-          // When user data and contacts are available, we can safely show content
           setIsLoading(false);
         }
       };
       
-      loadContacts();
+      initializeChat();
+      
+      // Clean up socket connection when component unmounts
+      return () => {
+        socketManager.disconnect();
+      };
     }
-  }, [user, router, addContact]);
+  }, [user, router, addContact, addRoom, addMessage]);
   
   // Handle responsive layout
   useEffect(() => {
@@ -61,47 +88,56 @@ export default function ChatPage() {
     };
   }, [activeRoomId]);
   
-  // Handle incoming messages from socket
+  // Set up socket event listeners
   useEffect(() => {
-    if (socketRef.current) {
-      const socket = socketRef.current; // Capture the value of socketRef.current
+    // Handle new messages
+    const messageUnsubscribe = socketManager.onMessage((message) => {
+      addMessage(message);
       
-      socket.on('receive_message', (message) => {
-        addMessage(message);
-      });
-      
-      return () => {
-        socket.off('receive_message'); // Use the captured reference in cleanup
-      };
-    }
-  }, [socketRef, addMessage]);
+      // Mark as read if we're in the active room
+      if (activeRoomId === message.roomId) {
+        markMessagesAsRead(message.roomId);
+      }
+    });
+    
+    // Handle room updates (new messages, typing indicators, etc.)
+    const roomUpdateUnsubscribe = socketManager.onRoomUpdate((room) => {
+      addRoom(room);
+    });
+    
+    // Handle online status changes
+    const onlineStatusUnsubscribe = socketManager.onOnlineStatus(({ userId, isOnline }) => {
+      updateContact(userId, { isOnline });
+    });
+    
+    return () => {
+      // Clean up event listeners
+      messageUnsubscribe();
+      roomUpdateUnsubscribe();
+      onlineStatusUnsubscribe();
+    };
+  }, [addMessage, addRoom, updateContact, activeRoomId]);
   
   const handleCreateChat = async (participants: string[], name: string, type: 'private' | 'group') => {
     if (!user) return;
     
     try {
-      // In a real app, this would be a server API call
-      // For now, we'll just create a mock room
-      const newRoom = {
-        id: Math.random().toString(36).substr(2, 9),
-        name,
-        type,
-        unreadCount: 0,
-        participants: participants.map(id => ({
-          id,
-          fullName: 'User ' + id.substring(0, 4),
-          isOnline: Math.random() > 0.5,
-          email: `user_${id.substring(0, 4)}@example.com`, // Add email field to satisfy User interface
-        })),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+      // Create a real room through our chat service
+      const newRoom = await createRoom(participants, name, type);
       
-      addRoom(newRoom);
-      
-      // In mobile view, switch to conversation view
-      if (isMobileView) {
-        setShowSidebar(false);
+      if (newRoom) {
+        addRoom(newRoom);
+        
+        // Set this as the active room
+        setActiveRoom(newRoom.id);
+        
+        // Join the socket.io room
+        socketManager.joinRoom(newRoom.id);
+        
+        // In mobile view, switch to conversation view
+        if (isMobileView) {
+          setShowSidebar(false);
+        }
       }
     } catch (error) {
       console.error('Failed to create chat:', error);
@@ -144,7 +180,6 @@ export default function ChatPage() {
           h-full bg-white transition-transform duration-300 ease-in-out`}
       >
         <ChatConversation 
-          socket={socketRef} 
           onBackClick={() => setShowSidebar(true)}
           isMobile={isMobileView}
         />

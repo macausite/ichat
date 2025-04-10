@@ -10,25 +10,18 @@ interface Message {
   read: boolean;
 }
 
-interface Room {
-  id: string;
-  name: string;
-  type: 'private' | 'group';
-  lastMessage?: Message;
+// Import Room, Message, and User from the central types file
+import { Room as RoomType, Message as MessageType, User as UserType } from '../types';
+
+// Extend the types for local use
+interface Message extends MessageType {}
+
+interface Room extends RoomType {
+  // Ensure required properties for store operations
   unreadCount: number;
-  participants: User[];
-  createdAt: string;
-  updatedAt: string;
 }
 
-interface User {
-  id: string;
-  email: string;
-  fullName?: string;
-  avatarUrl?: string;
-  isOnline?: boolean;
-  lastSeen?: string;
-}
+interface User extends UserType {}
 
 interface ChatState {
   activeRoomId: string | null;
@@ -115,8 +108,8 @@ const useChatStore = create<ChatState>()(
             if (room.id === message.roomId) {
               return {
                 ...room,
-                lastMessage: message,
-                unreadCount: isActiveRoom ? 0 : room.unreadCount + 1
+                last_message: message,
+                unreadCount: isActiveRoom ? 0 : (room.unreadCount || 0) + 1
               };
             }
             return room;

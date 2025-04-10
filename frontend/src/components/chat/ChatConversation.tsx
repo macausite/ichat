@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Socket } from 'socket.io-client';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import ChatMessage from './ChatMessage';
@@ -9,15 +8,15 @@ import MessageInput from './MessageInput';
 import useChatStore from '../../store/useChatStore';
 import { Message } from '../../types';
 import useAuthStore from '../../store/useAuthStore';
+import { socketManager } from '../../lib/socket';
 import { FaArrowLeft, FaEllipsisV, FaPhone, FaVideo, FaInfoCircle, FaUserPlus, FaSearch } from 'react-icons/fa';
 
 interface ChatConversationProps {
-  socket: React.MutableRefObject<Socket | null>;
   onBackClick?: () => void;
   isMobile?: boolean;
 }
 
-export default function ChatConversation({ socket, onBackClick, isMobile = false }: ChatConversationProps) {
+export default function ChatConversation({ onBackClick, isMobile = false }: ChatConversationProps) {
   const { activeRoomId, rooms, messages, addMessage, markMessagesAsRead } = useChatStore();
   const { user } = useAuthStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -46,21 +45,23 @@ export default function ChatConversation({ socket, onBackClick, isMobile = false
   
   // Listen for typing events
   useEffect(() => {
-    if (!socket.current) return;
+    if (!activeRoomId || !user) return;
     
-    socket.current.on('typing', (data) => {
-      if (data.roomId === activeRoomId && data.userId !== user?.id) {
+    const unsubscribe = socketManager.onTyping((data) => {
+      if (data.roomId === activeRoomId && data.userId !== user.id) {
         setIsTyping(data.isTyping);
         setTypingUser(data.username);
       }
     });
     
+    // Join the room for real-time updates
+    socketManager.joinRoom(activeRoomId);
+    
     return () => {
-      if (socket.current) {
-        socket.current.off('typing');
-      }
+      unsubscribe();
+      // Don't leave the room on cleanup as we might just be temporarily hiding the component
     };
-  }, [socket, activeRoomId, user?.id]);
+  }, [activeRoomId, user]);
   
   if (!activeRoom || !activeRoomId) {
     return (
@@ -221,7 +222,6 @@ export default function ChatConversation({ socket, onBackClick, isMobile = false
       {/* Message Input */}
       <MessageInput 
         roomId={activeRoomId}
-        socket={socket}
         onMessageSent={handleMessageSent}
       />
     </div>
