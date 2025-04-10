@@ -295,15 +295,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="bg-gray-800 text-white py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Product</h3>
-              <ul className="space-y-2">
-                <li><a href="/features" className="text-gray-300 hover:text-white transition-colors">Features</a></li>
-                <li><a href="/pricing" className="text-gray-300 hover:text-white transition-colors">Pricing</a></li>
-                <li><a href="/faq" className="text-gray-300 hover:text-white transition-colors">FAQ</a></li>
-              </ul>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div>
               <h3 className="text-lg font-semibold mb-4">Company</h3>
               <ul className="space-y-2">
